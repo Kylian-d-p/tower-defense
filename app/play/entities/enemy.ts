@@ -1,8 +1,9 @@
 import { randint } from "@/lib/utils";
 import { DefenseType } from "./defense";
 
-export type EnemyType = FastEnemy | TankEnemy | BossEnemy | Healer;
+export type EnemyType = FastEnemy | TankEnemy | BossEnemy | HealerEnemy;
 type positionType = { x: number; y: number; lane: number }; // x: 0-100%, y: 0-100%, lane: 0-2
+export type EnemyStringType = "FastEnemy" | "TankEnemy" | "HealerEnemy" | "BossEnemy";
 
 export class Enemy {
   private _damages: number;
@@ -13,6 +14,7 @@ export class Enemy {
   private _name: string;
   private _description: string;
   private _position: positionType;
+  private _id: string;
 
   constructor(damages: number, health: number, shield: number, speed: number, name: string, description: string, position: positionType) {
     this._damages = damages;
@@ -23,6 +25,7 @@ export class Enemy {
     this._name = name;
     this._description = description;
     this._position = position;
+    this._id = Math.random().toString(36).substring(7);
   }
 
   get damages() {
@@ -34,14 +37,27 @@ export class Enemy {
   }
 
   get position() {
-    return {
-      x: this._position.x,
-      y: this._position.y,
-    };
+    return this._position;
   }
 
-  get lane() {
-    return this._position.lane;
+  get id() {
+    return this._id;
+  }
+
+  get name() {
+    return this._name;
+  }
+
+  get description() {
+    return this._description;
+  }
+
+  get health() {
+    return this._health;
+  }
+
+  get maxHealth() {
+    return this._maxHealth;
   }
 
   move(xIncrement: number, yIncrement: number) {
@@ -64,32 +80,94 @@ export class Enemy {
   attack(attacked: DefenseType) {
     attacked.takeDamages(this.damages);
   }
+
+  addShield(shield: number) {
+    this._shield += shield;
+  }
+
+  takeDamages(damages: number) {
+    if (this._shield > 0) {
+      this._shield -= damages;
+      if (this._shield < 0) {
+        this._health += this._shield;
+        this._shield = 0;
+      }
+    } else {
+      this._health -= damages;
+    }
+  }
+
+  tick(defenses: DefenseType[]) {
+    const sortedTargetableDefensesByDistance = defenses
+      .filter((defense) => defense.targetable)
+      .sort((a, b) => {
+        if (a.positionning.type !== b.positionning.type) {
+          return a.positionning.type === "onLane" ? 1 : -1;
+        }
+        if (a.positionning.type === "onLane" && b.positionning.type === "onLane") {
+          return Math.abs(a.positionning.position.x - this.position.x) - Math.abs(b.positionning.position.x - this.position.x);
+        }
+        if (a.positionning.type === "onSpot" && b.positionning.type === "onSpot") {
+          return b.positionning.position.spot - a.positionning.position.spot;
+        }
+        return 0;
+      });
+    if (sortedTargetableDefensesByDistance[0]) {
+      const nearestTargetableDefense = sortedTargetableDefensesByDistance[0];
+      if (nearestTargetableDefense.positionning.type === "onLane") {
+        const dx = nearestTargetableDefense.positionning.position.x - this.position.x;
+        const dy = nearestTargetableDefense.positionning.position.y - this.position.y;
+
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance <= 4) {
+          this.attack(nearestTargetableDefense);
+          return;
+        }
+
+        const scale = this.speed / distance;
+
+        this.move(dx * scale, dy * scale);
+      } else if (nearestTargetableDefense.positionning.type === "onSpot") {
+        this.move(this.speed, 0);
+      }
+    } else {
+      this.move(this.speed, 0);
+    }
+  }
 }
 
 export class FastEnemy extends Enemy {
   constructor(lane: number) {
-    super(10, 100, 0, 0.8, "Fast enemy", "This enemy is fast.", { x: 0, y: randint(0, 100), lane });
-  }
-
-  tick(enemies: EnemyType[], defenses: DefenseType[]) {
-    this.move(this.speed, 0);
+    super(10, 100, 0, 0.8, "Fast Enemy", "This enemy is fast.", { x: 0, y: randint(15, 85), lane });
   }
 }
 
 export class TankEnemy extends Enemy {
   constructor(lane: number) {
-    super(2, 700, 0, 0.3, "Tank enemy", "This enemy has a lot of health.", { x: 0, y: randint(0, 100), lane });
+    super(2, 700, 0, 0.3, "Tank Enemy", "This enemy has a lot of health.", { x: 0, y: randint(15, 85), lane });
   }
 }
 
 export class BossEnemy extends Enemy {
   constructor(lane: number) {
-    super(15, 1000, 0, 0.4, "Boss enemy", "This enemy is the boss.", { x: 0, y: randint(0, 100), lane });
+    super(15, 1000, 0, 0.4, "Boss Enemy", "This enemy is the boss.", { x: 0, y: randint(15, 85), lane });
   }
 }
 
-export class Healer extends Enemy {
+export class HealerEnemy extends Enemy {
   constructor(lane: number) {
-    super(1, 90, 0, 0.5, "Healer", "This enemy heals other enemies by adding shield.", { x: 0, y: randint(0, 100), lane });
+    super(1, 90, 0, 0.5, "Healer Enemy", "This enemy heals other enemies by adding shield.", { x: 0, y: randint(15, 85), lane });
+  }
+
+  tick(defenses: DefenseType[], enemies?: EnemyType[]) {
+    super.tick(defenses);
+    if (enemies) {
+      enemies.forEach((enemy) => {
+        if (enemy.position.lane === this.position.lane && enemy.id !== this.id) {
+          enemy.addShield(.1);
+        }
+      });
+    }
   }
 }
