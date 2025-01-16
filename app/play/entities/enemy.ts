@@ -15,8 +15,18 @@ export class Enemy {
   private _description: string;
   private _position: positionType;
   private _id: string;
+  private _moneyValue: number;
 
-  constructor(damages: number, health: number, shield: number, speed: number, name: string, description: string, position: positionType) {
+  constructor(
+    damages: number,
+    health: number,
+    shield: number,
+    speed: number,
+    name: string,
+    description: string,
+    position: positionType,
+    moneyValue: number
+  ) {
     this._damages = damages;
     this._health = health;
     this._maxHealth = health;
@@ -26,6 +36,7 @@ export class Enemy {
     this._description = description;
     this._position = position;
     this._id = Math.random().toString(36).substring(7);
+    this._moneyValue = moneyValue;
   }
 
   get damages() {
@@ -139,25 +150,25 @@ export class Enemy {
 
 export class FastEnemy extends Enemy {
   constructor(lane: number) {
-    super(10, 100, 0, 0.8, "Fast Enemy", "This enemy is fast.", { x: 0, y: randint(15, 85), lane });
+    super(10, 100, 0, 0.8, "Fast Enemy", "This enemy is fast.", { x: 0, y: randint(15, 85), lane }, 35);
   }
 }
 
 export class TankEnemy extends Enemy {
   constructor(lane: number) {
-    super(2, 700, 0, 0.3, "Tank Enemy", "This enemy has a lot of health.", { x: 0, y: randint(15, 85), lane });
+    super(2, 700, 0, 0.3, "Tank Enemy", "This enemy has a lot of health.", { x: 0, y: randint(15, 85), lane }, 65);
   }
 }
 
 export class BossEnemy extends Enemy {
   constructor(lane: number) {
-    super(15, 1000, 0, 0.4, "Boss Enemy", "This enemy is the boss.", { x: 0, y: randint(15, 85), lane });
+    super(15, 1000, 0, 0.4, "Boss Enemy", "This enemy is the boss.", { x: 0, y: randint(15, 85), lane }, 150);
   }
 }
 
 export class HealerEnemy extends Enemy {
   constructor(lane: number) {
-    super(1, 90, 0, 0.5, "Healer Enemy", "This enemy heals other enemies by adding shield.", { x: 0, y: randint(15, 85), lane });
+    super(1, 90, 0, 0.5, "Healer Enemy", "This enemy heals other enemies by adding shield.", { x: 0, y: randint(15, 85), lane }, 50);
   }
 
   tick(defenses: DefenseType[], enemies?: EnemyType[]) {
@@ -165,7 +176,7 @@ export class HealerEnemy extends Enemy {
     if (enemies) {
       enemies.forEach((enemy) => {
         if (enemy.position.lane === this.position.lane && enemy.id !== this.id) {
-          enemy.addShield(.1);
+          enemy.addShield(0.1);
         }
       });
     }

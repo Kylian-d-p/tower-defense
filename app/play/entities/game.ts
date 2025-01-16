@@ -9,7 +9,7 @@ type WaveEnemy = {
 
 export class Game {
   static TICKRATE = 1000 / 30;
-  static waveRates: { enemies: WaveEnemy[]; money: number; duration: number }[] = Array.from({ length: 15 }, (_, i) => ({
+  static waveRates: { enemies: WaveEnemy[]; money: number; duration: number }[] = Array.from({ length: 50 }, (_, i) => ({
     enemies: [
       { type: "FastEnemy", amount: Math.round(10 + i * 4) },
       { type: "TankEnemy", amount: i >= 2 ? Math.round(i / 2) : 0 },
@@ -17,7 +17,7 @@ export class Game {
       { type: "BossEnemy", amount: i >= 6 ? Math.round(i / 3) : 0 },
     ],
     money: 100 + i * 50,
-    duration: 20 + i * 10,
+    duration: 10 + i * 10,
   }));
   defenses: DefenseType[];
   enemies: EnemyType[];
