@@ -80,11 +80,11 @@ export default function PlayGame() {
                               className="w-10 min-w-10 h-10"
                             />
                             <div
-                              className="absolute rounded-full bottom-2 z-10 left-0 h-1 bg-green-400"
+                              className="absolute rounded-full bottom-0 z-10 left-0 h-1 bg-green-400"
                               style={{ width: `${(defense.health / defense.maxHealth) * 100}%` }}
                             />
-                            <div className="absolute rounded-full bottom-2 -z-10 left-0 w-full h-1 bg-background" />
-                            <div className="absolute rounded-full top-2 left-1/2 -translate-x-1/2 bg-background w-6 h-6 flex items-center justify-center">
+                            <div className="absolute rounded-full bottom-0 -z-10 left-0 w-full h-1 bg-background" />
+                            <div className="absolute rounded-full top-0 right-0 bg-background w-6 h-6 flex items-center justify-center">
                               {defense.level + 1}
                             </div>
                           </>
