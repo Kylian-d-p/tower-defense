@@ -1,20 +1,21 @@
 import { randint } from "@/lib/utils";
-import { BomberDefense, DefenseType, TurretDefense } from "./defense";
+import { BomberDefense, DefenseType, ProximityMineDefense, TurretDefense, WallDefense } from "./defense";
 import { BossEnemy, EnemyStringType, EnemyType, FastEnemy, HealerEnemy, TankEnemy } from "./enemy";
 
 type WaveEnemy = {
   type: EnemyStringType;
   amount: number;
+  shield: number;
 };
 
 export class Game {
   static TICKRATE = 1000 / 30;
   static waveRates: { enemies: WaveEnemy[]; money: number; duration: number }[] = Array.from({ length: 50 }, (_, i) => ({
     enemies: [
-      { type: "FastEnemy", amount: Math.round(10 + i * 4) },
-      { type: "TankEnemy", amount: i >= 2 ? Math.round(i / 2) : 0 },
-      { type: "HealerEnemy", amount: i >= 3 ? Math.round(i / 2) : 0 },
-      { type: "BossEnemy", amount: i >= 6 ? Math.round(i / 3) : 0 },
+      { type: "FastEnemy", amount: Math.round(10 + i * 4), shield: Math.round(i * 5) },  
+      { type: "TankEnemy", amount: i >= 2 ? Math.round(i * 1.5) : 0, shield: Math.round(i * 10) },
+      { type: "HealerEnemy", amount: i >= 3 ? i : 0, shield: Math.round(i * 15) },
+      { type: "BossEnemy", amount: i >= 6 ? Math.round(i / 3) : 0, shield: Math.round(i * 20) },
     ],
     money: 100 + i * 50,
     duration: 10 + i * 5,
@@ -24,7 +25,7 @@ export class Game {
   private _money: number;
   private _running = true;
   private _wave: number;
-  private _remainingEnemiesInWave: { type: EnemyStringType; spawnTickNumber: number }[] = [];
+  private _remainingEnemiesInWave: { type: EnemyStringType; spawnTickNumber: number, shield: number }[] = [];
   private _ticknumber = 0;
   private _health = 100;
   private _maxHealth = 100;
@@ -61,6 +62,15 @@ export class Game {
     return this._maxHealth;
   }
 
+  removeDefense(defense: DefenseType) {
+    for (const def of this._defenses) {
+      if (def === defense) {
+        this._defenses.splice(this._defenses.indexOf(def), 1);
+        break;
+      }
+    }
+  }
+
   removeMoney(amount: number) {
     if (amount > 0) {
       this._money -= amount;
@@ -82,6 +92,7 @@ export class Game {
         Array.from({ length: enemy.amount }).map(() => ({
           type: enemy.type,
           spawnTickNumber: randint(0, Game.waveRates[this._wave - 1].duration * 30),
+          shield: enemy.shield,
         }))
       )
       .flat();
@@ -102,16 +113,16 @@ export class Game {
           if (enemy.spawnTickNumber <= this._ticknumber) {
             switch (enemy.type) {
               case "FastEnemy":
-                this.addEnemy(new FastEnemy(randint(0, 2)));
+                this.addEnemy(new FastEnemy(randint(0, 2), enemy.shield));
                 break;
               case "TankEnemy":
-                this.addEnemy(new TankEnemy(randint(0, 2)));
+                this.addEnemy(new TankEnemy(randint(0, 2), enemy.shield));
                 break;
               case "HealerEnemy":
-                this.addEnemy(new HealerEnemy(randint(0, 2)));
+                this.addEnemy(new HealerEnemy(randint(0, 2), enemy.shield));
                 break;
               case "BossEnemy":
-                this.addEnemy(new BossEnemy(randint(0, 2)));
+                this.addEnemy(new BossEnemy(randint(0, 2), enemy.shield));
                 break;
             }
             this._remainingEnemiesInWave.splice(i, 1);
@@ -119,7 +130,7 @@ export class Game {
         });
 
         this._enemies.forEach((enemy) => {
-          enemy.tick(this._defenses, this);
+          enemy.tick(this._defenses, this, this._enemies);
           if (enemy.health <= 0) {
             this._money += enemy.reward;
             this._enemies.splice(this._enemies.indexOf(enemy), 1);
@@ -166,6 +177,20 @@ export class Game {
     if (this.money >= BomberDefense.prices[0]) {
       this._defenses.push(new BomberDefense({ lane, spot }));
       this._money -= BomberDefense.prices[0];
+    }
+  }
+
+  addWallDefense(lane: number, x: number, y: number) {
+    if (this.money >= WallDefense.prices[0]) {
+      this._defenses.push(new WallDefense({ lane, x, y}));
+      this._money -= WallDefense.prices[0];
+    }
+  }
+
+  addProximityMineDefense(lane: number, x: number, y: number) {
+    if (this.money >= ProximityMineDefense.prices[0]) {
+      this._defenses.push(new ProximityMineDefense({ lane, x, y}));
+      this._money -= ProximityMineDefense.prices[0];
     }
   }
 }

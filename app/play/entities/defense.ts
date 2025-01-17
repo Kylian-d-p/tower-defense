@@ -24,6 +24,7 @@ export class Defense {
   private _range: number;
   private _targetingMode: TargetingMode;
   private _alive = true;
+  private _id = Math.random().toString(36).substring(7);
 
   constructor(
     positionning: PositionningType,
@@ -37,9 +38,14 @@ export class Defense {
     range: number,
     targetingMode: TargetingMode
   ) {
-    if (level > damages.length || level > maxHealth.length) {
+    if (damages.length !== maxHealth.length || maxHealth.length !== prices.length) {
+      throw new Error(`The number of levels is different for damages, health and prices. (Defense name : ${name})`);
+    }
+
+    if (level > prices.length - 1) {
       throw new Error(`Level is higher than the number of levels available for this defense. (Defense name : ${name})`);
     }
+
 
     this._positionning = positionning;
     this._damages = damages;
@@ -52,6 +58,10 @@ export class Defense {
     this._type = type;
     this._range = range;
     this._targetingMode = targetingMode;
+  }
+
+  get id() {
+    return this._id;
   }
 
   get targetable() {
@@ -84,6 +94,21 @@ export class Defense {
 
   get levelUpPrice() {
     return this._prices[this._level + 1];
+  }  
+
+  get restoreHealthPrice() {
+    return Math.round(this._maxHealth[this._level] - this._health);
+  }
+
+  get maxLevel() {
+    return this._prices.length - 1;
+  }
+
+  restoreHealth(game: Game) {
+    if (game.money >= this.restoreHealthPrice) {
+      game.removeMoney(this.restoreHealthPrice);
+      this._health = this._maxHealth[this._level];
+    }
   }
 
   takeDamages(damages: number) {
@@ -195,35 +220,35 @@ export class BomberDefense extends Defense {
 }
 
 export class ProximityMineDefense extends Defense {
-  static prices = [100, 200, 250, 300, 350];
+  static prices = [250];
   static description = "Inflige des dégâts aux ennemis proches.";
   constructor(position: LanePositionType) {
     super(
       { type: "onLane", position },
-      [20, 30, 40, 75, 110],
-      [60, 95, 135, 185, 250],
+      [4],
+      [250],
       ProximityMineDefense.prices,
       "Mine de proximité",
-      true,
+      false,
       0,
       "ProximityMineDefense",
-      7,
+      30,
       "multiple"
     );
   }
 }
 
 export class WallDefense extends Defense {
-  static prices = [50, 150, 200, 250, 300];
+  static prices = [250];
   static description = "Bloque la progression des ennemis sur la voie.";
   constructor(position: LanePositionType) {
     super(
       { type: "onLane", position },
-      [0, 0, 0, 0, 0],
-      [1000, 1500, 1900, 2500, 3000],
+      [0],
+      [1000],
       WallDefense.prices,
       "Mur",
-      false,
+      true,
       0,
       "WallDefense",
       0,

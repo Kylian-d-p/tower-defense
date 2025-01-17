@@ -79,6 +79,10 @@ export class Enemy {
     return this._reward;
   }
 
+  get shield() {
+    return this._shield;
+  }
+
   move(xIncrement: number, yIncrement: number) {
     if (this._position.x + xIncrement > 100) {
       xIncrement = 100 - this._position.x;
@@ -122,7 +126,7 @@ export class Enemy {
       .filter((defense) => defense.positionning.position.lane === this.position.lane)
       .sort((a, b) => {
         if (a.positionning.type !== b.positionning.type) {
-          return a.positionning.type === "onLane" ? 1 : -1;
+          return a.positionning.type === "onLane" ? -1 : 1;
         }
         if (a.positionning.type === "onLane" && b.positionning.type === "onLane") {
           return Math.abs(a.positionning.position.x - this.position.x) - Math.abs(b.positionning.position.x - this.position.x);
@@ -166,26 +170,26 @@ export class Enemy {
 }
 
 export class FastEnemy extends Enemy {
-  constructor(lane: number) {
-    super(.5, 100, 0, 0.8, "Fast Enemy", "This enemy is fast.", { x: 0, y: randint(15, 85), lane }, 35, 5);
+  constructor(lane: number, shield: number) {
+    super(.5, 100, shield, 0.8, "Fast Enemy", "This enemy is fast.", { x: 0, y: randint(15, 85), lane }, 15, 5);
   }
 }
 
 export class TankEnemy extends Enemy {
-  constructor(lane: number) {
-    super(.1, 700, 0, 0.3, "Tank Enemy", "This enemy has a lot of health.", { x: 0, y: randint(15, 85), lane }, 65, 1);
+  constructor(lane: number, shield: number) {
+    super(.1, 700, shield, 0.3, "Tank Enemy", "This enemy has a lot of health.", { x: 0, y: randint(15, 85), lane }, 50, 1);
   }
 }
 
 export class BossEnemy extends Enemy {
-  constructor(lane: number) {
-    super(1.5, 1000, 0, 0.4, "Boss Enemy", "This enemy is the boss.", { x: 0, y: randint(15, 85), lane }, 150, 2);
+  constructor(lane: number, shield: number) {
+    super(3, 1500, shield, 0.4, "Boss Enemy", "This enemy is the boss.", { x: 0, y: randint(15, 85), lane }, 150, 2);
   }
 }
 
 export class HealerEnemy extends Enemy {
-  constructor(lane: number) {
-    super(.05, 90, 0, 0.5, "Healer Enemy", "This enemy heals other enemies by adding shield.", { x: 0, y: randint(15, 85), lane }, 50, 6);
+  constructor(lane: number, shield: number) {
+    super(.05, 90, shield, 0.5, "Healer Enemy", "This enemy heals other enemies by adding shield.", { x: 0, y: randint(15, 85), lane }, 75, 6);
   }
 
   tick(defenses: DefenseType[], game: Game, enemies?: EnemyType[]) {
@@ -193,7 +197,7 @@ export class HealerEnemy extends Enemy {
     if (enemies) {
       enemies.forEach((enemy) => {
         if (enemy.position.lane === this.position.lane && enemy.id !== this.id) {
-          enemy.addShield(0.1);
+          enemy.addShield(.4);
         }
       });
     }
