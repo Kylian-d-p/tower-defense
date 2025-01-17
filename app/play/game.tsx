@@ -2,13 +2,16 @@
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import clsx from "clsx";
-import { Plus } from "lucide-react";
+import { CircleDollarSign, Plus } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { BomberDefense, TurretDefense } from "./entities/defense";
 import { Game } from "./entities/game";
 
 export default function PlayGame() {
-  const [game] = useState(new Game([], []));
+  const [game] = useState(
+    new Game([new TurretDefense({ lane: 0, spot: 1 }), new TurretDefense({ lane: 1, spot: 1 }), new TurretDefense({ lane: 2, spot: 1 })], [])
+  );
   const [, forceUpdate] = useState(0); // Utilisé pour forcer le re-render
 
   useEffect(() => {
@@ -36,6 +39,9 @@ export default function PlayGame() {
                     className="absolute -translate-x-full -translate-y-1/2"
                     key={enemy.id}
                     style={{ top: `${enemy.position.y}%`, left: `${enemy.position.x}%` }}
+                    onClick={() => {
+                      enemy.takeDamages(15);
+                    }}
                   >
                     <Image src={`/images/spaceships/${enemy.name}.png`} width={50} height={50} alt="Vaisseau" className="w-10 min-w-10 h-10" />
                     <div
@@ -61,33 +67,61 @@ export default function PlayGame() {
                     className={clsx("rounded-lg cursor-pointer transition-colors hover:bg-foreground/10", !defense && "bg-foreground/30")}
                   >
                     <DropdownMenu>
-                      <DropdownMenuTrigger className="w-full h-full flex items-center justify-center">
+                      <DropdownMenuTrigger className="w-full h-full flex items-center justify-center relative">
                         {!defense ? (
                           <Plus />
                         ) : (
-                          <Image src={`/images/defenses/${defense.type}.png`} width={50} height={50} alt="Tourelle" className="w-10 min-w-10 h-10" />
+                          <>
+                            <Image
+                              src={`/images/defenses/${defense.type}.png`}
+                              width={50}
+                              height={50}
+                              alt="Tourelle"
+                              className="w-10 min-w-10 h-10"
+                            />
+                            <div
+                              className="absolute rounded-full bottom-2 z-10 left-0 h-1 bg-green-400"
+                              style={{ width: `${(defense.health / defense.maxHealth) * 100}%` }}
+                            />
+                            <div className="absolute rounded-full bottom-2 -z-10 left-0 w-full h-1 bg-background" />
+                            <div className="absolute rounded-full top-2 left-1/2 -translate-x-1/2 bg-background w-6 h-6 flex items-center justify-center">
+                              {defense.level + 1}
+                            </div>
+                          </>
                         )}
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="*:cursor-pointer *:*:w-full flex flex-col">
                         {!defense ? (
                           <>
                             <DropdownMenuItem
+                              disabled={game.money < TurretDefense.prices[0]}
                               onClick={() => {
                                 game.addTurret(lane, spot);
                               }}
                             >
-                              Ajouter une tourelle
+                              Ajouter une tourelle (${TurretDefense.prices[0]})
                             </DropdownMenuItem>
                             <DropdownMenuItem
+                              disabled={game.money < BomberDefense.prices[0]}
                               onClick={() => {
                                 game.addBomberDefense(lane, spot);
                               }}
                             >
-                              Ajouter un bombardier
+                              Ajouter un bombardier (${BomberDefense.prices[0]})
                             </DropdownMenuItem>
                           </>
                         ) : (
-                          <></>
+                          <>
+                            <DropdownMenuItem
+                              disabled={game.money < defense.levelUpPrice}
+                              onClick={() => {
+                                defense.levelUp(game);
+                              }}
+                            >
+                              Améliorer (${defense.levelUpPrice})
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>Supprimer</DropdownMenuItem>
+                          </>
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -98,7 +132,15 @@ export default function PlayGame() {
           </div>
         ))}
       </div>
-      <div className="bg-background/30 backdrop-blur-lg rounded-lg"></div>
+      <div className="bg-background/30 backdrop-blur-lg rounded-lg flex flex-col gap-2 p-5">
+        <p>Vague n°{game.wave}</p>
+        <p className="flex items-center gap-1">
+          Votre argent : {game.money}
+          <CircleDollarSign className="w-5 h-5" />
+        </p>
+      </div>
+      <div className=" rounded-full bg-background absolute bottom-0 h-2 w-full" />
+      <div className=" rounded-full bg-green-400 absolute bottom-0 h-2" style={{ width: `${(game.health / game.maxHealth) * 100}%` }} />
     </>
   );
 }

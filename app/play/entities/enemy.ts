@@ -1,5 +1,6 @@
 import { randint } from "@/lib/utils";
 import { DefenseType } from "./defense";
+import { Game } from "./game";
 
 export type EnemyType = FastEnemy | TankEnemy | BossEnemy | HealerEnemy;
 type positionType = { x: number; y: number; lane: number }; // x: 0-100%, y: 0-100%, lane: 0-2
@@ -15,7 +16,8 @@ export class Enemy {
   private _description: string;
   private _position: positionType;
   private _id: string;
-  private _moneyValue: number;
+  private _reward: number;
+  private _range: number;
 
   constructor(
     damages: number,
@@ -25,7 +27,8 @@ export class Enemy {
     name: string,
     description: string,
     position: positionType,
-    moneyValue: number
+    reward: number,
+    range: number
   ) {
     this._damages = damages;
     this._health = health;
@@ -36,7 +39,8 @@ export class Enemy {
     this._description = description;
     this._position = position;
     this._id = Math.random().toString(36).substring(7);
-    this._moneyValue = moneyValue;
+    this._reward = reward;
+    this._range = range;
   }
 
   get damages() {
@@ -69,6 +73,10 @@ export class Enemy {
 
   get maxHealth() {
     return this._maxHealth;
+  }
+
+  get reward() {
+    return this._reward;
   }
 
   move(xIncrement: number, yIncrement: number) {
@@ -108,9 +116,10 @@ export class Enemy {
     }
   }
 
-  tick(defenses: DefenseType[]) {
+  tick(defenses: DefenseType[], game: Game) {
     const sortedTargetableDefensesByDistance = defenses
       .filter((defense) => defense.targetable)
+      .filter((defense) => defense.positionning.position.lane === this.position.lane)
       .sort((a, b) => {
         if (a.positionning.type !== b.positionning.type) {
           return a.positionning.type === "onLane" ? 1 : -1;
@@ -131,7 +140,7 @@ export class Enemy {
 
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance <= 4) {
+        if (distance <= this._range) {
           this.attack(nearestTargetableDefense);
           return;
         }
@@ -140,39 +149,47 @@ export class Enemy {
 
         this.move(dx * scale, dy * scale);
       } else if (nearestTargetableDefense.positionning.type === "onSpot") {
-        this.move(this.speed, 0);
+        if (this.position.x < 100 - this._range) {
+          this.move(this.speed, 0);
+        } else {
+          this.attack(nearestTargetableDefense);
+        }
       }
     } else {
-      this.move(this.speed, 0);
+      if (this.position.x < 100 - this._range) {
+        this.move(this.speed, 0);
+      } else {
+        game.takeDamages(this.damages / Game.TICKRATE);
+      }
     }
   }
 }
 
 export class FastEnemy extends Enemy {
   constructor(lane: number) {
-    super(10, 100, 0, 0.8, "Fast Enemy", "This enemy is fast.", { x: 0, y: randint(15, 85), lane }, 35);
+    super(.5, 100, 0, 0.8, "Fast Enemy", "This enemy is fast.", { x: 0, y: randint(15, 85), lane }, 35, 5);
   }
 }
 
 export class TankEnemy extends Enemy {
   constructor(lane: number) {
-    super(2, 700, 0, 0.3, "Tank Enemy", "This enemy has a lot of health.", { x: 0, y: randint(15, 85), lane }, 65);
+    super(.1, 700, 0, 0.3, "Tank Enemy", "This enemy has a lot of health.", { x: 0, y: randint(15, 85), lane }, 65, 1);
   }
 }
 
 export class BossEnemy extends Enemy {
   constructor(lane: number) {
-    super(15, 1000, 0, 0.4, "Boss Enemy", "This enemy is the boss.", { x: 0, y: randint(15, 85), lane }, 150);
+    super(1.5, 1000, 0, 0.4, "Boss Enemy", "This enemy is the boss.", { x: 0, y: randint(15, 85), lane }, 150, 2);
   }
 }
 
 export class HealerEnemy extends Enemy {
   constructor(lane: number) {
-    super(1, 90, 0, 0.5, "Healer Enemy", "This enemy heals other enemies by adding shield.", { x: 0, y: randint(15, 85), lane }, 50);
+    super(.05, 90, 0, 0.5, "Healer Enemy", "This enemy heals other enemies by adding shield.", { x: 0, y: randint(15, 85), lane }, 50, 6);
   }
 
-  tick(defenses: DefenseType[], enemies?: EnemyType[]) {
-    super.tick(defenses);
+  tick(defenses: DefenseType[], game: Game, enemies?: EnemyType[]) {
+    super.tick(defenses, game);
     if (enemies) {
       enemies.forEach((enemy) => {
         if (enemy.position.lane === this.position.lane && enemy.id !== this.id) {

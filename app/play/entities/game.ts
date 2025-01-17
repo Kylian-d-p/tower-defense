@@ -17,30 +17,71 @@ export class Game {
       { type: "BossEnemy", amount: i >= 6 ? Math.round(i / 3) : 0 },
     ],
     money: 100 + i * 50,
-    duration: 10 + i * 10,
+    duration: 10 + i * 5,
   }));
-  defenses: DefenseType[];
-  enemies: EnemyType[];
-  money: number;
-  running = true;
-  wave: number;
-  remainingEnemiesInWave: { type: EnemyStringType; spawnTickNumber: number }[] = [];
-  ticknumber = 0;
+  private _defenses: DefenseType[];
+  private _enemies: EnemyType[];
+  private _money: number;
+  private _running = true;
+  private _wave: number;
+  private _remainingEnemiesInWave: { type: EnemyStringType; spawnTickNumber: number }[] = [];
+  private _ticknumber = 0;
+  private _health = 100;
+  private _maxHealth = 100;
 
   constructor(defenses: DefenseType[], enemies: EnemyType[], money = 100, wave = 1) {
-    this.defenses = defenses;
-    this.enemies = enemies;
-    this.money = money;
-    this.wave = wave;
+    this._defenses = defenses;
+    this._enemies = enemies;
+    this._money = money;
+    this._wave = wave;
     this.setRemainingEnemiesInWave();
   }
 
+  get wave() {
+    return this._wave;
+  }
+
+  get defenses() {
+    return this._defenses;
+  }
+
+  get enemies() {
+    return this._enemies;
+  }
+
+  get money() {
+    return this._money;
+  }
+
+  get health() {
+    return this._health;
+  }
+
+  get maxHealth() {
+    return this._maxHealth;
+  }
+
+  removeMoney(amount: number) {
+    if (amount > 0) {
+      this._money -= amount;
+    }
+  }
+
+  takeDamages(damages: number) {
+    damages /= 2;
+    this._health -= damages;
+    if (this._health <= 0) {
+      this._health = 0;
+      this._running = false;
+    }
+  }
+
   private setRemainingEnemiesInWave() {
-    this.remainingEnemiesInWave = Game.waveRates[this.wave - 1].enemies
+    this._remainingEnemiesInWave = Game.waveRates[this._wave - 1].enemies
       .map((enemy) =>
         Array.from({ length: enemy.amount }).map(() => ({
           type: enemy.type,
-          spawnTickNumber: randint(0, Game.waveRates[this.wave - 1].duration * 30),
+          spawnTickNumber: randint(0, Game.waveRates[this._wave - 1].duration * 30),
         }))
       )
       .flat();
@@ -48,17 +89,17 @@ export class Game {
 
   run() {
     setInterval(() => {
-      if (this.running) {
-        this.ticknumber++;
-        if (this.remainingEnemiesInWave.length === 0 && this.ticknumber >= Game.waveRates[this.wave - 1].duration * 30) {
-          this.ticknumber = 0;
-          this.wave++;
+      if (this._running) {
+        this._ticknumber++;
+        if (this._remainingEnemiesInWave.length === 0 && this._ticknumber >= Game.waveRates[this._wave - 1].duration * 30) {
+          this._ticknumber = 0;
+          this._wave++;
           this.setRemainingEnemiesInWave();
-          this.money += Game.waveRates[this.wave - 1].money;
+          this._money += Game.waveRates[this._wave - 1].money;
         }
 
-        this.remainingEnemiesInWave.forEach((enemy, i) => {
-          if (enemy.spawnTickNumber <= this.ticknumber) {
+        this._remainingEnemiesInWave.forEach((enemy, i) => {
+          if (enemy.spawnTickNumber <= this._ticknumber) {
             switch (enemy.type) {
               case "FastEnemy":
                 this.addEnemy(new FastEnemy(randint(0, 2)));
@@ -73,48 +114,58 @@ export class Game {
                 this.addEnemy(new BossEnemy(randint(0, 2)));
                 break;
             }
-            this.remainingEnemiesInWave.splice(i, 1);
+            this._remainingEnemiesInWave.splice(i, 1);
           }
         });
 
-        this.enemies.forEach((enemy) => {
-          enemy.tick(this.defenses);
+        this._enemies.forEach((enemy) => {
+          enemy.tick(this._defenses, this);
           if (enemy.health <= 0) {
-            this.enemies.splice(this.enemies.indexOf(enemy), 1);
+            this._money += enemy.reward;
+            this._enemies.splice(this._enemies.indexOf(enemy), 1);
           }
         });
-        this.defenses.forEach((defense) => {
-          defense.tick(this.enemies);
+        this._defenses.forEach((defense) => {
+          defense.tick(this._enemies);
+          if (!defense.alive) {
+            this._defenses.splice(this._defenses.indexOf(defense), 1);
+          }
         });
       }
     }, Game.TICKRATE);
   }
 
   addEnemy(enemy: EnemyType) {
-    this.enemies.push(enemy);
+    this._enemies.push(enemy);
   }
 
   addTurret(lane: number, spot: number) {
     if (
-      this.defenses.some(
+      this._defenses.some(
         (defense) =>
           defense.positionning.type === "onSpot" && defense.positionning.position.spot === spot && defense.positionning.position.lane === lane
       )
     ) {
       throw new Error("A defense is already on this spot.");
     }
-    this.defenses.push(new TurretDefense({ lane, spot }));
+    if (this.money >= TurretDefense.prices[0]) {
+      this._defenses.push(new TurretDefense({ lane, spot }));
+      this._money -= TurretDefense.prices[0];
+    }
   }
 
   addBomberDefense(lane: number, spot: number) {
     if (
-      this.defenses.some(
+      this._defenses.some(
         (defense) =>
           defense.positionning.type === "onSpot" && defense.positionning.position.spot === spot && defense.positionning.position.lane === lane
       )
     ) {
       throw new Error("A defense is already on this spot.");
     }
-    this.defenses.push(new BomberDefense({ lane, spot }));
+    if (this.money >= BomberDefense.prices[0]) {
+      this._defenses.push(new BomberDefense({ lane, spot }));
+      this._money -= BomberDefense.prices[0];
+    }
   }
 }

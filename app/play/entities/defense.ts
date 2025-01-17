@@ -1,4 +1,5 @@
 import { EnemyType } from "./enemy";
+import { Game } from "./game";
 
 type SpotPositionType = { lane: number; spot: number };
 type LanePositionType = { x: number; y: number; lane: number };
@@ -9,32 +10,29 @@ export type DefenseType = TurretDefense | BomberDefense | ProximityMineDefense |
 export type DefenseStringType = "TurretDefense" | "BomberDefense" | "ProximityMineDefense" | "WallDefense";
 
 export class Defense {
+  static prices = [100, 200, 300, 400, 500];
+  static description = "Description";
   private _positionning: PositionningType;
   private _damages: number[];
   private _health: number;
   private _maxHealth: number[];
-  private _shield: number;
-  private _description: string;
+  private _prices = Defense.prices;
   private _name: string;
   private _targetable: boolean;
-  private _price: number;
   private _level: number;
-  private _levelUpPrice: number[];
   private _type: DefenseStringType;
   private _range: number;
   private _targetingMode: TargetingMode;
+  private _alive = true;
 
   constructor(
     positionning: PositionningType,
     damages: number[],
     maxHealth: number[],
-    shield: number,
+    prices: number[],
     name: string,
-    description: string,
     targetable: boolean,
-    price: number,
     level: number,
-    levelUpPrice: number[],
     type: DefenseStringType,
     range: number,
     targetingMode: TargetingMode
@@ -47,13 +45,10 @@ export class Defense {
     this._damages = damages;
     this._health = maxHealth[level];
     this._maxHealth = maxHealth;
-    this._shield = shield;
+    this._prices = prices;
     this._name = name;
-    this._description = description;
     this._targetable = targetable;
-    this._price = price;
     this._level = level;
-    this._levelUpPrice = levelUpPrice;
     this._type = type;
     this._range = range;
     this._targetingMode = targetingMode;
@@ -71,25 +66,52 @@ export class Defense {
     return this._type;
   }
 
+  get health() {
+    return this._health;
+  }
+
+  get maxHealth() {
+    return this._maxHealth[this._level];
+  }
+
+  get alive() {
+    return this._alive;
+  }
+
+  get level() {
+    return this._level;
+  }
+
+  get levelUpPrice() {
+    return this._prices[this._level + 1];
+  }
+
   takeDamages(damages: number) {
-    if (this._shield > 0) {
-      this._shield -= damages;
-      if (this._shield < 0) {
-        this._health += this._shield;
-        this._shield = 0;
-      }
-    } else {
-      this._health -= damages;
+    this._health -= damages;
+    if (this._health <= 0) {
+      this.levelDown();
     }
   }
 
-  levelUp() {
+  levelDown() {
+    if (this._level <= 0) {
+      this._alive = false;
+      return;
+    }
+    this._level--;
+    this._health = this._maxHealth[this._level];
+  }
+
+  levelUp(game: Game) {
     if (this._level >= this._maxHealth.length - 1 || this._level >= this._damages.length - 1) {
       throw new Error(`Defense is already at max level. (Defense name : ${this._name})`);
     }
 
-    this._level++;
-    this._health = this._maxHealth[this._level];
+    if (game.money >= this._prices[this._level + 1]) {
+      this._level++;
+      this._health = this._maxHealth[this._level];
+      game.removeMoney(this._prices[this._level]);
+    }
   }
 
   attack(target: EnemyType) {
@@ -135,19 +157,17 @@ export class Defense {
 }
 
 export class TurretDefense extends Defense {
+  static prices = [75, 200, 300, 400, 500];
   static description = "Cible les ennemis présents sur la voie assignée.";
   constructor(position: SpotPositionType) {
     super(
       { type: "onSpot", position },
-      [1, 2, 3.5, 5, 8],
-      [100, 125, 150, 200, 300],
-      0,
+      [1, 1.2, 1.5, 2, 2.6],
+      [100, 200, 300, 500, 650],
+      TurretDefense.prices,
       "Tourelle",
-      TurretDefense.description,
       true,
-      100,
       0,
-      [150, 200, 300, 400, 500],
       "TurretDefense",
       100,
       "single"
@@ -156,19 +176,17 @@ export class TurretDefense extends Defense {
 }
 
 export class BomberDefense extends Defense {
+  static prices = [50, 150, 200, 250, 300];
   static description = "Inflige des dégâts à tous les ennemis proches de la base.";
   constructor(position: SpotPositionType) {
     super(
       { type: "onSpot", position },
-      [2.5, 3.5, 5, 8.5, 12.5],
-      [50, 75, 115, 150, 225],
-      0,
+      [2.5, 3, 3.6, 4, 5],
+      [85, 150, 250, 400, 550],
+      BomberDefense.prices,
       "Bombardier",
-      BomberDefense.description,
       true,
-      50,
       0,
-      [100, 150, 200, 250, 300],
       "BomberDefense",
       15,
       "multiple"
@@ -177,19 +195,17 @@ export class BomberDefense extends Defense {
 }
 
 export class ProximityMineDefense extends Defense {
+  static prices = [100, 200, 250, 300, 350];
   static description = "Inflige des dégâts aux ennemis proches.";
   constructor(position: LanePositionType) {
     super(
       { type: "onLane", position },
       [20, 30, 40, 75, 110],
       [60, 95, 135, 185, 250],
-      0,
+      ProximityMineDefense.prices,
       "Mine de proximité",
-      ProximityMineDefense.description,
       true,
-      100,
       0,
-      [150, 200, 250, 300, 350],
       "ProximityMineDefense",
       7,
       "multiple"
@@ -198,19 +214,17 @@ export class ProximityMineDefense extends Defense {
 }
 
 export class WallDefense extends Defense {
+  static prices = [50, 150, 200, 250, 300];
   static description = "Bloque la progression des ennemis sur la voie.";
   constructor(position: LanePositionType) {
     super(
       { type: "onLane", position },
       [0, 0, 0, 0, 0],
       [1000, 1500, 1900, 2500, 3000],
-      50,
+      WallDefense.prices,
       "Mur",
-      WallDefense.description,
       false,
-      50,
       0,
-      [100, 150, 200, 250, 300],
       "WallDefense",
       0,
       "single"
