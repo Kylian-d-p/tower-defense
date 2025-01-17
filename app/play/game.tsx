@@ -1,12 +1,10 @@
 "use client";
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import clsx from "clsx";
 import { Plus } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { BomberDefense, TurretDefense } from "./entities/defense";
 import { Game } from "./entities/game";
 
 export default function PlayGame() {
@@ -67,50 +65,26 @@ export default function PlayGame() {
                         {!defense ? (
                           <Plus />
                         ) : (
-                          <Image
-                            src={`/images/defenses/${defense.type}.png`}
-                            width={50}
-                            height={50}
-                            alt="Tourelle"
-                            className="w-10 min-w-10 h-10"
-                          />
+                          <Image src={`/images/defenses/${defense.type}.png`} width={50} height={50} alt="Tourelle" className="w-10 min-w-10 h-10" />
                         )}
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent className="*:*:cursor-pointer *:*:w-full flex flex-col">
+                      <DropdownMenuContent className="*:cursor-pointer *:*:w-full flex flex-col">
                         {!defense ? (
                           <>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger>
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      game.addTurret(lane, spot);
-                                    }}
-                                  >
-                                    Ajouter une tourelle
-                                  </DropdownMenuItem>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>{TurretDefense.description}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger>
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      game.addBomberDefense(lane, spot);
-                                    }}
-                                  >
-                                    Ajouter un bombardier
-                                  </DropdownMenuItem>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>{BomberDefense.description}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                game.addTurret(lane, spot);
+                              }}
+                            >
+                              Ajouter une tourelle
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                game.addBomberDefense(lane, spot);
+                              }}
+                            >
+                              Ajouter un bombardier
+                            </DropdownMenuItem>
                           </>
                         ) : (
                           <></>
